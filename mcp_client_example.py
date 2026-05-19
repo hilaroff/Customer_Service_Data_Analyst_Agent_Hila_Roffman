@@ -24,10 +24,10 @@ async def main():
     #    for the subprocess (avoids path issues on Windows)
     client = MultiServerMCPClient(
             {
-                "customer_service": {
-                    "transport": "stdio",
-                    "command": sys.executable,
-                    "args": [os.path.join(os.path.dirname(os.path.abspath(__file__)), "mcp_server.py")],
+                "customer_service": { # Server name
+                    "transport": "stdio", # Communication method
+                    "command": sys.executable,  # Python path
+                    "args": [os.path.join(os.path.dirname(os.path.abspath(__file__)), "mcp_server.py")],  # Server script
                 }
             }
         )
