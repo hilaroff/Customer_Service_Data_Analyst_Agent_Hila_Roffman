@@ -1,0 +1,22 @@
+# API keys
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Data (graders download their own)
+data/
+
+# Auto-generated persistence files
+checkpoints.db
+profiles/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
