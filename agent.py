@@ -2,7 +2,7 @@
 agent.py — LangGraph ReAct agent with query router and persistent memory.
 
 Graph structure:
-  START -> router_node → [structured/unstructured →-> agent_node, out_of_scope -> decline_node] -> END
+  START → router_node → [structured/unstructured → agent_node, out_of_scope → decline_node] → END
 
 Task 1: Router, tools, multi-step reasoning, max iterations fallback
 Task 2a: SqliteSaver checkpointer for episodic memory (conversation persistence)
@@ -22,6 +22,7 @@ from config import (
 from router import classify_query
 from tools import ALL_TOOLS
 from user_profile import create_profile_tools
+from query_recommender import create_recommender_tool  # Bonus B
 
 
 # ── System prompt for the ReAct agent ─────────────────────────────────
@@ -44,6 +45,12 @@ You also have memory capabilities:
 - When the user shares personal info (name, preferences, interests), use
   update_user_profile to save it.
 - When asked "What do you remember about me?", use get_user_profile to retrieve their info.
+
+Query recommendations (Bonus B):
+- When the user asks "What should I query next?" or similar, use the recommend_queries
+  tool. Summarize what has been discussed so far and pass it as the conversation_summary.
+- IMPORTANT: Only SUGGEST queries — do NOT execute them immediately.
+- Let the user pick or refine a suggestion. Only execute when they confirm (e.g. "Yes, do it").
 
 Be concise and helpful. Show your reasoning.
 """
@@ -98,9 +105,10 @@ def build_agent_graph(checkpointer=None, user_id: str = "default"):
     """
     llm = create_agent_llm()
 
-    # Combine dataset tools + user profile tools
+    # Combine dataset tools + user profile tools + recommender (Bonus B)
     profile_tools = create_profile_tools(user_id)
-    all_tools = ALL_TOOLS + profile_tools
+    recommender_tools = create_recommender_tool(user_id)  # Bonus B
+    all_tools = ALL_TOOLS + profile_tools + recommender_tools
 
     # The inner ReAct agent handles tool-calling for structured/unstructured queries
     react_agent = create_react_agent(
@@ -150,13 +158,14 @@ def build_agent_graph(checkpointer=None, user_id: str = "default"):
             return {"messages": [AIMessage(content=f"An error occurred: {e}")]}
 
     def route_decision(state: MessagesState) -> str:
+        """Read the route tag and decide which node to go to next."""
         for msg in reversed(state["messages"]):
             if hasattr(msg, "content") and isinstance(msg.content, str) \
-            and msg.content.startswith("__ROUTE__:"):
+               and msg.content.startswith("__ROUTE__:"):
                 route = msg.content.split(":", 1)[1]
                 if route == "out_of_scope":
                     return "decline"
-                return "agent"  # structured, unstructured, AND personal all go to agent (personal added in Task 2b)
+                return "agent"
         return "agent"
 
     # ── Build the graph ───────────────────────────────────────────────

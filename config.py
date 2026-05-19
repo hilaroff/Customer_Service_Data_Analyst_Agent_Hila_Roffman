@@ -7,7 +7,7 @@ load_dotenv()
 
 # ── Nebius Token Factory ──────────────────────────────────────────────
 NEBIUS_API_BASE = "https://api.tokenfactory.nebius.com/v1/"
-NEBIUS_API_KEY = os.environ.get("NEBIUS_API_KEY", "v1.CmMKHHN0YXRpY2tleS1lMDBmcnc5NG10dGdjZTF2M2ESIXNlcnZpY2VhY2NvdW50LWUwMHdrczM4eXN5YWRlNTF0eTILCOvRhdAGEJyMtR46DAjq1J2bBxDAo-PcAUACWgNlMDA.AAAAAAAAAAHP031Tgw91rBXZsCHsndA-Ln0ft6CzMzfjSijWDfVOMG_3Y4c_10nuCRr2VMOcqJuXHRcbSlutc35-s6HknQgM")
+NEBIUS_API_KEY = os.environ.get("NEBIUS_API_KEY", "")
 
 # Qwen3-30B-A3B-Instruct-2507: A Mixture-of-Experts model (30B total, 3B active params).
 # Chosen for its strong balance of capability and cost-efficiency:

@@ -1,10 +1,12 @@
 """
 router.py — Query router node for the agent graph.
 
-Classifies incoming queries into three types BEFORE tool selection:
-  - structured:    concrete, data-driven answers (counts, distributions, examples)
-  - unstructured:  open-ended summarization or pattern analysis
-  - out_of_scope:  unrelated to the customer service dataset
+Classifies incoming queries BEFORE tool selection:
+  - structured:      concrete, data-driven answers (counts, distributions, examples)
+  - unstructured:    open-ended summarization or pattern analysis
+  - personal:        user sharing info or asking what we remember (Task 2b)
+  - recommendation:  user asking for query suggestions (Bonus B)
+  - out_of_scope:    unrelated to the customer service dataset
 
 Worth 15 pts. Must be a dedicated node in the graph, not just prompt instructions.
 """
@@ -12,14 +14,13 @@ Worth 15 pts. Must be a dedicated node in the graph, not just prompt instruction
 from langchain_openai import ChatOpenAI
 from config import NEBIUS_API_BASE, NEBIUS_API_KEY, ROUTER_MODEL
 
-# Add fourth category 'personal' for user profile interactions (Task 2b)
 ROUTER_SYSTEM_PROMPT = """\
 You are a query classifier for a customer service data analysis agent.
 The agent has access to a customer service dataset with categories, intents,
 customer instructions, and agent responses. The agent also has a user profile
-memory system.
+memory system and a query recommendation feature.
 
-Classify the user's query into EXACTLY one of these four types:
+Classify the user's query into EXACTLY one of these five types:
 
 - **structured**: The user wants a concrete, data-driven answer.
   Examples: counts, distributions, listing categories/intents, showing example rows.
@@ -28,15 +29,18 @@ Classify the user's query into EXACTLY one of these four types:
 - **unstructured**: The user wants an open-ended summary, analysis, or pattern description.
   e.g. "Summarize the FEEDBACK category", "How do agents respond to complaints?"
 
-- **personal**: The user is sharing personal information, asking what you remember about them,
-  or making conversation about themselves.
-  e.g. "My name is Alice", "I work in complaints", "What do you remember about me?",
-  "I'm interested in refund data", "Remember that I prefer detailed examples."
+- **personal**: The user is sharing personal information, asking what you remember,
+  or making conversation about themselves. (Task 2b)
+  e.g. "My name is Alice", "I work in complaints", "What do you remember about me?"
 
-- **out_of_scope**: The query is NOT about the dataset AND NOT personal information.
+- **recommendation**: The user is asking for query suggestions or what to explore next. (Bonus B)
+  e.g. "What should I query next?", "What else can I ask?", "Suggest something",
+  "Yes, do it", "Go ahead", "Let's try that"
+
+- **out_of_scope**: The query is NOT about the dataset, NOT personal info, NOT a recommendation.
   e.g. "Who won the Champions League?", "Write me a poem", "What's the weather?"
 
-Reply with EXACTLY one word: structured, unstructured, personal, or out_of_scope
+Reply with EXACTLY one word: structured, unstructured, personal, recommendation, or out_of_scope
 """
 
 
@@ -52,13 +56,14 @@ def create_router_llm() -> ChatOpenAI:
 
 
 def classify_query(query: str) -> str:
-    """Classify a user query into structured / unstructured / out_of_scope.
+    """Classify a user query into one of: structured, unstructured, personal,
+    recommendation, or out_of_scope.
 
     Args:
         query: The user's natural-language question.
 
     Returns:
-        One of: 'structured', 'unstructured', 'out_of_scope'.
+        One of: 'structured', 'unstructured', 'personal', 'recommendation', 'out_of_scope'.
     """
     llm = create_router_llm()
     response = llm.invoke([
@@ -68,13 +73,11 @@ def classify_query(query: str) -> str:
     classification = response.content.strip().lower()
 
     # Validate — fall back to structured if the model returns something unexpected
-    #  Addad personal category for Task 2b user profile interactions
-    valid = {"structured", "unstructured", "out_of_scope", "personal"}
+    valid = {"structured", "unstructured", "personal", "recommendation", "out_of_scope"}
     if classification not in valid:
-        # Try to extract a valid class from the response
         for v in valid:
             if v in classification:
                 return v
-        return "structured"  # safe default: let the agent try
+        return "structured"  # safe default
 
     return classification
